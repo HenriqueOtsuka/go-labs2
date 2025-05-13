@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    command: ["--config=/etc/otel-collector-config.yml"]
+    ports:
+      - "4317:4317"
+    networks:
+      - cep-weather
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    ports:
+      - "9411:9411"
+    networks:
+      - cep-weather
+
+  api1:
+    build: ./api1
+    environment:
+      - SERVICE_B_URL=http://api2:8090/cep
+      - OTEL_ENDPOINT=otel-collector:4317
+      - OTEL_SERVICE_NAME=api1
+    depends_on:
+      - api2
+      - otel-collector
+    ports:
+      - "8080:8080"
+    networks:
+      - cep-weather
+
+  api2:
+    build: ./api2
+    environment:
+      - OTEL_ENDPOINT=otel-collector:4317
+      - OTEL_SERVICE_NAME=api2
+      - FREEWEATHER_API_KEY=f50883a077ed45acbb325450251305
+    depends_on:
+      - otel-collector
+    ports:
+      - "8090:8090"
+    networks:
+      - cep-weather
+
+networks:
+  cep-weather:
+    driver: bridge
+    name: cep-weather
+            
